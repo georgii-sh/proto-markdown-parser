@@ -34,7 +34,7 @@
     "markdown"
   ],
   "author": "Georgii Sh <georgii.sh@hotmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/georgii-sh/proto-markdown-parser/issues"
   },
