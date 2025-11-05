@@ -1,8 +1,12 @@
 .claude
 Claude.md
+CLAUDE.md
 README.md
 tsconfig.json
 rollup.config.js
 jest.config.js
 jest.setup.js
 jest.preset.js
+
+# Claude Code memory files
+.claude/memory/**
