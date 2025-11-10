@@ -15,6 +15,9 @@ export class ShadcnCodeGenerator {
     this.indentLevel = 0;
     this.requiredImports.clear();
 
+    // Check if the component contains a workflow
+    const hasWorkflow = nodes.some(node => node.type === 'workflow');
+
     // Generate component body
     const componentBody = this.generateNodes(nodes);
 
@@ -26,8 +29,9 @@ export class ShadcnCodeGenerator {
 
     // Collect imports
     const imports = this.generateImports();
+    const reactImport = hasWorkflow ? "import { useState } from 'react';\n" : "";
 
-    return `${imports}
+    return `${reactImport}${imports}
 
 export function GeneratedComponent() {
   return (
@@ -120,6 +124,10 @@ ${indentedBody}
         return this.generateItalic(node, index);
       case "image":
         return this.generateImage(node, index);
+      case "workflow":
+        return this.generateWorkflow(node, index);
+      case "screen":
+        return this.generateScreen(node, index);
       default:
         return "";
     }
@@ -252,7 +260,10 @@ ${this.indent()}</div>`;
     const variant = node.variant || "default";
     const className = node.className ? ` className="${node.className}"` : "";
 
-    return `${this.indent()}<Button key={${index}} variant="${variant}"${className}>${this.escapeJSX(node.content || "")}</Button>`;
+    // Add onClick handler if button has navigation
+    const onClick = node.navigateTo ? ` onClick={() => setCurrentScreen('${node.navigateTo}')}` : "";
+
+    return `${this.indent()}<Button key={${index}} variant="${variant}"${className}${onClick}>${this.escapeJSX(node.content || "")}</Button>`;
   }
 
   private generateContainer(node: MarkdownNode, index: number): string {
@@ -371,5 +382,53 @@ ${this.indent()}</div>`;
     const alt = node.alt || "";
 
     return `${this.indent()}<img key={${index}} src="${src}" alt="${this.escapeJSX(alt)}" className="max-w-full h-auto" />`;
+  }
+
+  private generateWorkflow(node: MarkdownNode, index: number): string {
+    const screens = node.children || [];
+    const initialScreen = node.initialScreen || screens[0]?.id || "home";
+
+    // Generate state management
+    const stateDeclaration = `${this.indent()}const [currentScreen, setCurrentScreen] = useState('${initialScreen}');`;
+
+    // Generate screen rendering
+    this.indentLevel++;
+    const screenCases = screens.map((screen, i) => {
+      const screenId = screen.id || `screen-${i}`;
+      const screenContent = screen.children ? this.generateNodes(screen.children) : "";
+
+      return `${this.indent()}${i === 0 ? '' : 'else '}if (currentScreen === '${screenId}') {
+${this.indent()}  return (
+${this.indent()}    <div className="space-y-2">
+${screenContent}
+${this.indent()}    </div>
+${this.indent()}  );
+${this.indent()}}`;
+    }).join('\n');
+    this.indentLevel--;
+
+    // Return fallback if no screen matches
+    const fallback = `${this.indent()}return <div>Screen not found</div>;`;
+
+    return `${this.indent()}<div key={${index}}>
+${this.indent()}  {(() => {
+${stateDeclaration}
+
+${screenCases}
+${fallback}
+${this.indent()}  })()}
+${this.indent()}</div>`;
+  }
+
+  private generateScreen(node: MarkdownNode, index: number): string {
+    // Screens are handled within workflow generation
+    // This method is for standalone screen nodes (if used outside workflow)
+    this.indentLevel++;
+    const children = node.children ? this.generateNodes(node.children) : "";
+    this.indentLevel--;
+
+    return `${this.indent()}<div key={${index}} data-screen-id="${node.id || index}" className="space-y-2">
+${children}
+${this.indent()}</div>`;
   }
 }

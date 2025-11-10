@@ -1,4 +1,4 @@
-import { MarkdownParser } from './parser';
+import { MarkdownParser } from './MarkdownParser';
 
 /**
  * Performance Test Suite for MarkdownParser

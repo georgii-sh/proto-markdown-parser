@@ -70,6 +70,14 @@ export class MarkdownParser {
         continue;
       }
 
+      // Check for workflow start
+      if (line === '[workflow' || line.startsWith('[workflow ')) {
+        const result = this.parseWorkflow(lines, i);
+        nodes.push(result.node);
+        i = result.nextIndex;
+        continue;
+      }
+
       // Check for card start
       const cardMatch = line.match(/^\[--\s*(.*)$/);
       if (cardMatch) {
@@ -107,6 +115,123 @@ export class MarkdownParser {
     }
 
     return { nodes, errors: errors.length > 0 ? errors : undefined };
+  }
+
+  private parseWorkflow(
+    lines: string[],
+    startIndex: number
+  ): { node: MarkdownNode; nextIndex: number } {
+    const screens: MarkdownNode[] = [];
+    let i = startIndex + 1;
+    let depth = 1;
+    let initialScreen: string | undefined;
+
+    // Parse workflow content until we find the matching closing ]
+    while (i < lines.length && depth > 0) {
+      const workflowLine = this.options.preserveWhitespace ? lines[i] : lines[i].trim();
+
+      // Check for workflow closing
+      if (workflowLine === "]") {
+        depth--;
+        if (depth === 0) {
+          break;
+        }
+      }
+
+      // Check for screen opening ([screen id)
+      const screenMatch = workflowLine.match(/^\[screen\s+(.+)$/);
+      if (screenMatch) {
+        const screenId = screenMatch[1].trim();
+        const result = this.parseScreen(lines, i, screenId);
+        screens.push(result.node);
+
+        // First screen becomes the initial screen
+        if (!initialScreen) {
+          initialScreen = screenId;
+        }
+
+        i = result.nextIndex;
+        continue;
+      }
+
+      i++;
+    }
+
+    return {
+      node: {
+        type: "workflow",
+        children: screens,
+        initialScreen: initialScreen || (screens[0]?.id),
+      },
+      nextIndex: i + 1,
+    };
+  }
+
+  private parseScreen(
+    lines: string[],
+    startIndex: number,
+    screenId: string
+  ): { node: MarkdownNode; nextIndex: number } {
+    const screenChildren: MarkdownNode[] = [];
+    let i = startIndex + 1;
+    let depth = 1;
+
+    // Parse screen content until we find the matching closing ]
+    while (i < lines.length && depth > 0) {
+      const screenLine = this.options.preserveWhitespace ? lines[i] : lines[i].trim();
+
+      // Check for screen closing
+      if (screenLine === "]") {
+        depth--;
+        if (depth === 0) {
+          break;
+        }
+      }
+
+      // Check for nested card opening
+      if (screenLine.match(/^\[--\s*(.*)$/)) {
+        const nestedTitle = screenLine.match(/^\[--\s*(.*)$/)?.[1] || undefined;
+        const result = this.parseCard(lines, i, nestedTitle);
+        screenChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
+      }
+
+      // Check for nested grid opening
+      if (screenLine.match(/^\[grid\s+(.*)$/)) {
+        const nestedConfig = screenLine.match(/^\[grid\s+(.*)$/)?.[1] || '';
+        const result = this.parseContainer(lines, i, 'grid', nestedConfig);
+        screenChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
+      }
+
+      // Check for nested div opening
+      if (screenLine.match(/^\[\s*(.*)$/) && !screenLine.includes("]")) {
+        const nestedConfig = screenLine.match(/^\[\s*(.*)$/)?.[1] || '';
+        const result = this.parseContainer(lines, i, 'div', nestedConfig);
+        screenChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
+      }
+
+      if (screenLine) {
+        const childNode = this.parseLine(screenLine);
+        if (childNode) {
+          screenChildren.push(childNode);
+        }
+      }
+      i++;
+    }
+
+    return {
+      node: {
+        type: "screen",
+        id: screenId,
+        children: screenChildren,
+      },
+      nextIndex: i + 1,
+    };
   }
 
   private parseCard(
@@ -406,13 +531,28 @@ export class MarkdownParser {
     }
 
     // Parse multiple buttons on one line ([btn1][(btn2)])
-    const multiButtonMatch = line.match(/^(\[\(?[^\[\]|]+\)?\]\s*)+$/);
+    const multiButtonMatch = line.match(/^(\[\(?[^\[\]]+\)?\]\s*)+$/);
     if (multiButtonMatch) {
-      const buttons = line.match(/\[(\(?)[^\[\]|]+?(\)?)\]/g);
+      const buttons = line.match(/\[(\(?)[^\[\]]+?(\)?)\]/g);
       if (buttons && buttons.length > 1) {
         return {
           type: "container",
           children: buttons.map((btn) => {
+            // Check for navigation syntax: [(text) -> target] or [text -> target]
+            const navMatch = btn.match(/\[(\(?)(.+?)(\)?)\s*->\s*([^\]]+)\]/);
+            if (navMatch) {
+              const isDefault = navMatch[1] === "(" && navMatch[3] === ")";
+              const content = navMatch[2].trim();
+              const navigateTo = navMatch[4].trim();
+
+              return {
+                type: "button",
+                content,
+                variant: isDefault ? "default" : "outline",
+                navigateTo,
+              };
+            }
+
             const innerMatch = btn.match(/\[(\(?)(.+?)(\)?)\]/);
             if (innerMatch) {
               const isDefault = innerMatch[1] === "(" && innerMatch[3] === ")";
@@ -434,6 +574,20 @@ export class MarkdownParser {
       }
     }
 
+    // Parse default button with navigation [(button text) -> target]
+    const defaultButtonNavMatch = line.match(/^\[\((.+?)\)\s*->\s*([^\]]+)\]$/);
+    if (defaultButtonNavMatch) {
+      const content = defaultButtonNavMatch[1].trim();
+      const navigateTo = defaultButtonNavMatch[2].trim();
+
+      return {
+        type: "button",
+        content,
+        variant: "default",
+        navigateTo,
+      };
+    }
+
     // Parse default button [(button text)] or [(button text) | classes]
     const defaultButtonMatch = line.match(/^\[\((.+?)\)(?:\s*\|\s*(.+))?\]$/);
     if (defaultButtonMatch) {
@@ -445,6 +599,20 @@ export class MarkdownParser {
         content,
         variant: "default",
         ...(className && { className }),
+      };
+    }
+
+    // Parse outline button with navigation [button text -> target]
+    const buttonNavMatch = line.match(/^\[([^|]+?)\s*->\s*([^\]]+)\]$/);
+    if (buttonNavMatch) {
+      const content = buttonNavMatch[1].trim();
+      const navigateTo = buttonNavMatch[2].trim();
+
+      return {
+        type: "button",
+        content,
+        variant: "outline",
+        navigateTo,
       };
     }
 

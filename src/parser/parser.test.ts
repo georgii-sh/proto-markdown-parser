@@ -1,4 +1,4 @@
-import { MarkdownParser } from './parser';
+import { MarkdownParser } from './MarkdownParser';
 
 describe('MarkdownParser', () => {
   let parser: MarkdownParser;
@@ -1324,6 +1324,188 @@ Email ___ Remember me __[]
     expect(result.nodes[2].type).toBe('container');
     expect(result.nodes[2].children).toHaveLength(2);
     expect(result.nodes[3].type).toBe('container');
+  });
+
+  // Workflow and screen navigation tests
+  test('parses basic workflow with screens', () => {
+    const markdown = `[workflow
+  [screen home
+    # Welcome
+    Welcome to the app
+  ]
+  [screen login
+    # Login
+    Email ___
+    Password __*
+  ]
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('workflow');
+    expect(result.nodes[0].children).toHaveLength(2);
+    expect(result.nodes[0].initialScreen).toBe('home');
+
+    // Check first screen
+    expect(result.nodes[0].children?.[0].type).toBe('screen');
+    expect(result.nodes[0].children?.[0].id).toBe('home');
+    expect(result.nodes[0].children?.[0].children).toHaveLength(2);
+
+    // Check second screen
+    expect(result.nodes[0].children?.[1].type).toBe('screen');
+    expect(result.nodes[0].children?.[1].id).toBe('login');
+    expect(result.nodes[0].children?.[1].children).toHaveLength(3);
+  });
+
+  test('parses button with navigation', () => {
+    const result = parser.parse('[(Get Started) -> login]');
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0]).toEqual({
+      type: 'button',
+      content: 'Get Started',
+      variant: 'default',
+      navigateTo: 'login',
+    });
+  });
+
+  test('parses outline button with navigation', () => {
+    const result = parser.parse('[Back -> home]');
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0]).toEqual({
+      type: 'button',
+      content: 'Back',
+      variant: 'outline',
+      navigateTo: 'home',
+    });
+  });
+
+  test('parses multiple buttons with navigation', () => {
+    const result = parser.parse('[(Login) -> dashboard][Cancel -> home]');
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('container');
+    expect(result.nodes[0].children).toHaveLength(2);
+    expect(result.nodes[0].children?.[0]).toEqual({
+      type: 'button',
+      content: 'Login',
+      variant: 'default',
+      navigateTo: 'dashboard',
+    });
+    expect(result.nodes[0].children?.[1]).toEqual({
+      type: 'button',
+      content: 'Cancel',
+      variant: 'outline',
+      navigateTo: 'home',
+    });
+  });
+
+  test('parses workflow with navigation buttons', () => {
+    const markdown = `[workflow
+  [screen home
+    # Welcome
+    [(Get Started) -> login]
+    [Skip -> dashboard]
+  ]
+  [screen login
+    # Login
+    Email ___
+    Password __*
+    [(Login) -> dashboard]
+    [Back -> home]
+  ]
+  [screen dashboard
+    # Dashboard
+    Welcome to your dashboard!
+    [Logout -> home]
+  ]
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('workflow');
+    expect(result.nodes[0].children).toHaveLength(3);
+    expect(result.nodes[0].initialScreen).toBe('home');
+
+    // Check home screen
+    const homeScreen = result.nodes[0].children?.[0];
+    expect(homeScreen?.id).toBe('home');
+    expect(homeScreen?.children).toHaveLength(3); // header, 2 buttons
+    expect(homeScreen?.children?.[1].type).toBe('button');
+    expect(homeScreen?.children?.[1].navigateTo).toBe('login');
+    expect(homeScreen?.children?.[2].type).toBe('button');
+    expect(homeScreen?.children?.[2].navigateTo).toBe('dashboard');
+
+    // Check login screen
+    const loginScreen = result.nodes[0].children?.[1];
+    expect(loginScreen?.id).toBe('login');
+    expect(loginScreen?.children).toHaveLength(5); // header, email, password, 2 buttons
+
+    // Check dashboard screen
+    const dashboardScreen = result.nodes[0].children?.[2];
+    expect(dashboardScreen?.id).toBe('dashboard');
+    expect(dashboardScreen?.children).toHaveLength(3); // header, text, button
+  });
+
+  test('parses workflow with cards in screens', () => {
+    const markdown = `[workflow
+  [screen home
+    [-- Welcome Card
+      # Hello
+      [(Start) -> form]
+    --]
+  ]
+  [screen form
+    [-- Form Card
+      Email ___
+      [(Submit) -> home]
+    --]
+  ]
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('workflow');
+    expect(result.nodes[0].children).toHaveLength(2);
+
+    const homeScreen = result.nodes[0].children?.[0];
+    expect(homeScreen?.children).toHaveLength(1);
+    expect(homeScreen?.children?.[0].type).toBe('card');
+    expect(homeScreen?.children?.[0].titleChildren?.[0].content).toBe('Welcome Card');
+  });
+
+  test('parses workflow with grid layout in screens', () => {
+    const markdown = `[workflow
+  [screen dashboard
+    [grid cols-2 gap-4
+      [-- Card 1
+        Content 1
+      --]
+      [-- Card 2
+        Content 2
+      --]
+    ]
+  ]
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('workflow');
+
+    const dashboardScreen = result.nodes[0].children?.[0];
+    expect(dashboardScreen?.id).toBe('dashboard');
+    expect(dashboardScreen?.children).toHaveLength(1);
+    expect(dashboardScreen?.children?.[0].type).toBe('grid');
+    expect(dashboardScreen?.children?.[0].gridConfig).toBe('cols-2 gap-4');
+  });
+
+  test('parses mixed navigation and regular buttons', () => {
+    const result = parser.parse('[(Save) -> success][Cancel][Back -> home]');
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('container');
+    expect(result.nodes[0].children).toHaveLength(3);
+
+    expect(result.nodes[0].children?.[0].navigateTo).toBe('success');
+    expect(result.nodes[0].children?.[1].navigateTo).toBeUndefined();
+    expect(result.nodes[0].children?.[2].navigateTo).toBe('home');
   });
 });
 

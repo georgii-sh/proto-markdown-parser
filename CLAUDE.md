@@ -28,21 +28,26 @@ npm run prepublishOnly
 
 The parser uses a line-based parsing approach with recursive descent for nested structures:
 
-1. **Top-level parsing** (`parse` method): Processes markdown line by line, identifying tables, cards, grids, divs, and inline elements
+1. **Top-level parsing** (`parse` method): Processes markdown line by line, identifying workflows, tables, cards, grids, divs, and inline elements
 2. **Recursive parsers**:
+   - `parseWorkflow` handles workflow syntax (`[workflow` to `]`) and orchestrates screen parsing
+   - `parseScreen` handles screen syntax (`[screen id` to `]`) within workflows
    - `parseCard` handles card syntax (`[--` to `--]`) with depth tracking for nested cards
    - `parseContainer` handles both grid (`[grid ...`) and div (`[`) syntax with depth tracking
-   - `parseLine` handles inline elements (headers, inputs, buttons, text, etc.)
+   - `parseLine` handles inline elements (headers, inputs, buttons with navigation, text, etc.)
    - `parseInlineEmphasis` handles text formatting (bold `*text*`, italic `_text_`, bold-italic `_*text*_`)
 
 3. **Multi-element detection**: The parser detects multiple form fields or buttons on a single line and wraps them in a container node
 
+4. **Navigation detection**: Buttons can include navigation targets using `-> screenId` syntax, enabling screen-to-screen transitions in workflows
+
 ### Node Types (`src/parser/types.ts`)
 
 The AST uses a union type system with a single `MarkdownNode` interface containing optional fields for different node types. Key node types:
+- Workflow nodes: `workflow` (contains screens, tracks `initialScreen`), `screen` (contains UI elements, has unique `id`)
 - Container nodes: `card`, `container`, `grid`, `div` (all have `children` arrays)
 - Form elements: `input`, `textarea`, `dropdown`, `checkbox`, `radiogroup`
-- Content elements: `header`, `text`, `button`, `image`, `table`
+- Content elements: `header`, `text`, `button` (can have `navigateTo` for screen transitions), `image`, `table`
 - Inline formatting: `bold`, `italic` (can nest via `children`)
 
 ### Code Generator Architecture (`src/ShadcnCodeGenerator.ts`)
@@ -52,8 +57,15 @@ The code generator recursively traverses the AST and:
 2. Manages indentation levels for proper JSX nesting
 3. Generates a complete React component with imports and proper formatting
 4. Escapes JSX special characters in user content
+5. For workflows: Generates `useState` hook for screen management and conditional rendering logic
 
 The generator handles inline nodes differently from block nodes, using `generateInlineNode` for text content within headers, bold, and italic elements.
+
+**Workflow Generation**: When a `workflow` node is encountered, the generator creates:
+- A `useState` hook to manage `currentScreen` state
+- Conditional rendering (if/else chain) for each screen
+- `onClick` handlers on navigation buttons that call `setCurrentScreen(targetId)`
+- An IIFE wrapper to encapsulate the state and logic
 
 ## Key Implementation Details
 
@@ -100,10 +112,34 @@ Content here
 # Buttons
 [(Submit)][Cancel]
 
+# Buttons with navigation (for workflows)
+[(Next) -> step2]
+[Back -> step1]
+
 # Tables
 | Name | Age | City |
 |------|-----|------|
 | John | 30  | NYC  |
+
+# Workflows with multi-screen navigation
+[workflow
+  [screen welcome
+    # Welcome
+    [(Get Started) -> login]
+  ]
+  [screen login
+    # Login
+    Email ___
+    Password __*
+    [(Login) -> dashboard]
+    [Back -> welcome]
+  ]
+  [screen dashboard
+    # Dashboard
+    Welcome to your dashboard!
+    [Logout -> welcome]
+  ]
+]
 ```
 
 ## Package Configuration
