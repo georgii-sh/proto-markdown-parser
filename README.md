@@ -174,6 +174,15 @@ const code = generator.generate(nodes: MarkdownNode[]);
 
 **Returns:** Complete React component code as a string with necessary Shadcn UI imports
 
+### HtmlGenerator
+
+```ts
+const generator = new HtmlGenerator();
+const html = generator.generate(nodes: MarkdownNode[]);
+```
+
+**Returns:** HTML string for VS Code extension preview rendering
+
 ## Examples
 
 ### Login Form

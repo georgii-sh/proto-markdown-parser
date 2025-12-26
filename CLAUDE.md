@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a TypeScript library that parses Proto Markdown syntax (a UI prototyping markdown language from protomarkdown.org) and generates React components using Shadcn UI. The library provides two main classes:
+This is a TypeScript library that parses Proto Markdown syntax (a UI prototyping markdown language from protomarkdown.org) and generates code output. The library provides three main classes:
 
 - **MarkdownParser**: Parses Proto Markdown syntax into an Abstract Syntax Tree (AST)
 - **ShadcnCodeGenerator**: Converts the AST into React component code using Shadcn UI components
+- **HtmlGenerator**: Converts the AST into HTML for preview rendering (used by VS Code extension)
 
 ## Build and Test Commands
 
@@ -66,6 +67,15 @@ The generator handles inline nodes differently from block nodes, using `generate
 - Conditional rendering (if/else chain) for each screen
 - `onClick` handlers on navigation buttons that call `setCurrentScreen(targetId)`
 - An IIFE wrapper to encapsulate the state and logic
+
+### HTML Generator Architecture (`src/HtmlGenerator.ts`)
+
+The HTML generator produces static HTML with CSS classes prefixed with `proto-` for styling. It:
+1. Recursively renders each node type to HTML strings
+2. Handles inline nodes separately via `renderInlineNode` for text formatting
+3. Parses grid config (e.g., `cols-2 gap-4`) into CSS grid styles
+4. Escapes HTML special characters in user content
+5. For workflows: Renders all screens with `data-screen-id` attributes and marks the initial screen as active
 
 ## Key Implementation Details
 
@@ -144,7 +154,7 @@ Content here
 
 ## Package Configuration
 
-- Entry points: `src/index.ts` exports both `MarkdownParser` and `ShadcnCodeGenerator`
+- Entry points: `src/index.ts` exports `MarkdownParser`, `ShadcnCodeGenerator`, and `HtmlGenerator`
 - Build output: Dual CJS (`dist/index.js`) and ESM (`dist/index.esm.js`) bundles with TypeScript declarations
 - Module system: ESNext with ES2020 target
 - Bundler: Rollup with TypeScript plugin
