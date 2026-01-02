@@ -188,6 +188,14 @@ export class MarkdownParser {
         }
       }
 
+      // Check for table (line with pipes starting with |)
+      if (screenLine.includes("|") && screenLine.trim().startsWith("|")) {
+        const result = this.parseTable(lines, i, "]");
+        screenChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
+      }
+
       // Check for nested card opening
       if (screenLine.match(/^\[--\s*(.*)$/)) {
         const nestedTitle = screenLine.match(/^\[--\s*(.*)$/)?.[1] || undefined;
@@ -234,6 +242,59 @@ export class MarkdownParser {
     };
   }
 
+  private parseTable(
+    lines: string[],
+    startIndex: number,
+    closingDelimiter?: string
+  ): { node: MarkdownNode; nextIndex: number } {
+    const line = this.options.preserveWhitespace ? lines[startIndex] : lines[startIndex].trim();
+    const headers = line
+      .split("|")
+      .map((h) => h.trim())
+      .filter((h) => h.length > 0);
+
+    let i = startIndex + 1;
+
+    // Skip separator line (|---|---|)
+    if (i < lines.length) {
+      const separatorLine = this.options.preserveWhitespace
+        ? lines[i]
+        : lines[i].trim();
+      if (separatorLine.includes("-") && separatorLine.includes("|")) {
+        i++;
+      }
+    }
+
+    // Parse table rows
+    const rows: string[][] = [];
+    while (i < lines.length) {
+      const rowLine = this.options.preserveWhitespace
+        ? lines[i]
+        : lines[i].trim();
+
+      // Stop at closing delimiter or empty line or non-table line
+      if (!rowLine || !rowLine.includes("|") || (closingDelimiter && rowLine === closingDelimiter)) {
+        break;
+      }
+
+      const cells = rowLine
+        .split("|")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      rows.push(cells);
+      i++;
+    }
+
+    return {
+      node: {
+        type: "table",
+        headers,
+        rows,
+      },
+      nextIndex: i,
+    };
+  }
+
   private parseCard(
     lines: string[],
     startIndex: number,
@@ -253,6 +314,14 @@ export class MarkdownParser {
         if (depth === 0) {
           break;
         }
+      }
+
+      // Check for table (line with pipes starting with |)
+      if (cardLine.includes("|") && cardLine.trim().startsWith("|")) {
+        const result = this.parseTable(lines, i, "--]");
+        cardChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
       }
 
       // Check for nested card opening (must be before div check)
@@ -321,6 +390,14 @@ export class MarkdownParser {
         if (depth === 0) {
           break;
         }
+      }
+
+      // Check for table (line with pipes starting with |)
+      if (containerLine.includes("|") && containerLine.trim().startsWith("|")) {
+        const result = this.parseTable(lines, i, "]");
+        containerChildren.push(result.node);
+        i = result.nextIndex;
+        continue;
       }
 
       // Check for nested card opening (must be before div check)

@@ -1,6 +1,6 @@
 {
   "name": "@protomarkdown/parser",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "Parser and renderer for proto markdown syntax",
   "main": "dist/index.js",

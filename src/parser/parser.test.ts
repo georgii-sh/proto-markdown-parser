@@ -616,6 +616,90 @@ Password __*
     expect(result.nodes[0].children?.[0].children?.[1].type).toBe('card');
   });
 
+  test('parses table inside card', () => {
+    const markdown = `[-- Shopping Cart
+# Your Cart (3 items)
+
+| Product | Qty | Price |
+|---------|-----|-------|
+| Wireless Headphones | 1 | $129.99 |
+| USB-C Cable | 2 | $19.98 |
+| Phone Case | 1 | $24.99 |
+
+[(Proceed to Checkout)][Continue Shopping]
+--]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('card');
+    expect(result.nodes[0].titleChildren?.[0].content).toBe('Shopping Cart');
+    expect(result.nodes[0].children).toHaveLength(3);
+    expect(result.nodes[0].children?.[0].type).toBe('header');
+    expect(result.nodes[0].children?.[1].type).toBe('table');
+    expect(result.nodes[0].children?.[1].headers).toEqual(['Product', 'Qty', 'Price']);
+    expect(result.nodes[0].children?.[1].rows).toHaveLength(3);
+    expect(result.nodes[0].children?.[1].rows?.[0]).toEqual(['Wireless Headphones', '1', '$129.99']);
+    expect(result.nodes[0].children?.[2].type).toBe('container');
+    expect(result.nodes[0].children?.[2].children).toHaveLength(2);
+  });
+
+  test('parses table inside div', () => {
+    const markdown = `[ my-class
+# Products
+
+| Name | Stock |
+|------|-------|
+| Item A | 10 |
+| Item B | 5 |
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('div');
+    expect(result.nodes[0].className).toBe('my-class');
+    expect(result.nodes[0].children).toHaveLength(2);
+    expect(result.nodes[0].children?.[0].type).toBe('header');
+    expect(result.nodes[0].children?.[1].type).toBe('table');
+    expect(result.nodes[0].children?.[1].headers).toEqual(['Name', 'Stock']);
+    expect(result.nodes[0].children?.[1].rows).toEqual([['Item A', '10'], ['Item B', '5']]);
+  });
+
+  test('parses table inside grid', () => {
+    const markdown = `[grid cols-2 gap-4
+| Col1 | Col2 |
+|------|------|
+| A    | B    |
+]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('grid');
+    expect(result.nodes[0].children).toHaveLength(1);
+    expect(result.nodes[0].children?.[0].type).toBe('table');
+    expect(result.nodes[0].children?.[0].headers).toEqual(['Col1', 'Col2']);
+    expect(result.nodes[0].children?.[0].rows).toEqual([['A', 'B']]);
+  });
+
+  test('parses card with table and text content', () => {
+    const markdown = `[-- Order Summary
+| Item | Price |
+|------|-------|
+| Widget | $10 |
+
+*Subtotal:* $10.00
+
+[(Place Order)]
+--]`;
+
+    const result = parser.parse(markdown);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].type).toBe('card');
+    expect(result.nodes[0].children).toHaveLength(3);
+    expect(result.nodes[0].children?.[0].type).toBe('table');
+    expect(result.nodes[0].children?.[1].type).toBe('text');
+    expect(result.nodes[0].children?.[2].type).toBe('button');
+  });
+
   // Edge cases and uncovered lines
   test('parses table with empty rows (line 54)', () => {
     const markdown = `| Name | Age |
