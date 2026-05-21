@@ -1,0 +1,151 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`htmlRenderer end-to-end fixture corpus all form field types renders to a stable snapshot 1`] = `
+"
+      <div class="proto-field">
+        <label class="proto-label">Email</label>
+        <input type="text" class="proto-input" placeholder="" disabled />
+      </div>
+
+      <div class="proto-field">
+        <label class="proto-label">Password</label>
+        <input type="password" class="proto-input" placeholder="••••••••" disabled />
+      </div>
+
+      <div class="proto-field">
+        <label class="proto-label">Description</label>
+        <textarea class="proto-textarea" disabled></textarea>
+      </div>
+
+      <div class="proto-field">
+        <label class="proto-label">Country</label>
+        <select class="proto-select" disabled><option>USA</option><option>Canada</option><option>Mexico</option></select>
+      </div>
+
+      <div class="proto-checkbox">
+        <input type="checkbox" class="proto-checkbox-input" disabled />
+        <label class="proto-checkbox-label">Remember me</label>
+      </div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus buttons (single) renders to a stable snapshot 1`] = `
+"<button class="proto-button proto-button-default" disabled>Submit</button>
+<button class="proto-button proto-button-outline" disabled>Cancel</button>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus div with className renders to a stable snapshot 1`] = `"<div class="proto-div custom-class"><p class="proto-text">Inside</p></div>"`;
+
+exports[`htmlRenderer end-to-end fixture corpus dropdown without options uses default renders to a stable snapshot 1`] = `
+"
+      <div class="proto-field">
+        <label class="proto-label">Role</label>
+        <select class="proto-select" disabled><option>Select an option</option></select>
+      </div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus grid with cards renders to a stable snapshot 1`] = `
+"<div class="proto-grid" style="grid-template-columns: repeat(2, 1fr); gap: 16px">
+      <div class="proto-card">
+        <div class="proto-card-header">A --]</div>
+        <div class="proto-card-content">
+      <div class="proto-card">
+        <div class="proto-card-header">B --]</div>
+        <div class="proto-card-content"><p class="proto-text">]</p></div>
+      </div></div>
+      </div></div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus header with emphasis renders to a stable snapshot 1`] = `"<h2 class="proto-header">Hello <strong>world</strong> and <em>galaxy</em></h2>"`;
+
+exports[`htmlRenderer end-to-end fixture corpus header with nested bold-italic renders to a stable snapshot 1`] = `"<h3 class="proto-header">Bold <strong><em>nested</em></strong> italic</h3>"`;
+
+exports[`htmlRenderer end-to-end fixture corpus multi-button row renders to a stable snapshot 1`] = `
+"<div class="proto-container"><button class="proto-button proto-button-default" disabled>OK</button>
+<button class="proto-button proto-button-outline" disabled>Cancel</button></div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus multi-screen workflow with navigation renders to a stable snapshot 1`] = `
+"<div class="proto-workflow">
+          <div class="proto-screen proto-screen-active" data-screen-id="welcome">
+            <div class="proto-screen-header">
+              <span class="proto-screen-badge">welcome</span>
+              <span class="proto-screen-initial">Initial</span>
+            </div>
+            <div class="proto-screen-content"><h1 class="proto-header">Welcome</h1>
+<button class="proto-button proto-button-default" disabled>Start <span class="proto-nav-indicator">→ login</span></button></div>
+          </div>
+          <div class="proto-screen" data-screen-id="login">
+            <div class="proto-screen-header">
+              <span class="proto-screen-badge">login</span>
+              
+            </div>
+            <div class="proto-screen-content"><h1 class="proto-header">Login</h1>
+
+      <div class="proto-field">
+        <label class="proto-label">Email</label>
+        <input type="text" class="proto-input" placeholder="" disabled />
+      </div>
+<button class="proto-button proto-button-default" disabled>Login <span class="proto-nav-indicator">→ home</span></button>
+<button class="proto-button proto-button-outline" disabled>Back <span class="proto-nav-indicator">→ welcome</span></button></div>
+          </div>
+          <div class="proto-screen" data-screen-id="home">
+            <div class="proto-screen-header">
+              <span class="proto-screen-badge">home</span>
+              
+            </div>
+            <div class="proto-screen-content"><h1 class="proto-header">Home</h1>
+<button class="proto-button proto-button-outline" disabled>Logout <span class="proto-nav-indicator">→ welcome</span></button></div>
+          </div></div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus nested cards inside a grid renders to a stable snapshot 1`] = `
+"<div class="proto-grid" style="grid-template-columns: repeat(2, 1fr); gap: 16px">
+      <div class="proto-card">
+        <div class="proto-card-header">Outer</div>
+        <div class="proto-card-content"><p class="proto-text">Text inside outer</p></div>
+      </div>
+
+      <div class="proto-card">
+        <div class="proto-card-header">Second</div>
+        <div class="proto-card-content"><p class="proto-text">Some text</p></div>
+      </div></div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus simple table renders to a stable snapshot 1`] = `
+"
+      <table class="proto-table">
+        <thead><tr><th class="proto-table-th">Name</th><th class="proto-table-th">Age</th></tr></thead>
+        <tbody><tr><td class="proto-table-td">Alice</td><td class="proto-table-td">30</td></tr></tbody>
+      </table>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus single header renders to a stable snapshot 1`] = `"<h1 class="proto-header">Welcome</h1>"`;
+
+exports[`htmlRenderer end-to-end fixture corpus single-screen workflow renders to a stable snapshot 1`] = `
+"<div class="proto-workflow">
+          <div class="proto-screen proto-screen-active" data-screen-id="home">
+            <div class="proto-screen-header">
+              <span class="proto-screen-badge">home</span>
+              <span class="proto-screen-initial">Initial</span>
+            </div>
+            <div class="proto-screen-content"><h1 class="proto-header">Home</h1></div>
+          </div></div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus text with HTML special chars renders to a stable snapshot 1`] = `"<p class="proto-text">Use &amp; &lt; &gt; &quot; &#039; carefully</p>"`;
+
+exports[`htmlRenderer end-to-end fixture corpus titled card with content renders to a stable snapshot 1`] = `
+"
+      <div class="proto-card">
+        <div class="proto-card-header">Card Title</div>
+        <div class="proto-card-content"><p class="proto-text">Some body text</p></div>
+      </div>"
+`;
+
+exports[`htmlRenderer end-to-end fixture corpus untitled card with content renders to a stable snapshot 1`] = `
+"
+      <div class="proto-card">
+        
+        <div class="proto-card-content"><p class="proto-text">Some body text</p></div>
+      </div>"
+`;

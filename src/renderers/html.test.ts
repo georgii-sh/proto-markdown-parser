@@ -1,5 +1,4 @@
 import { MarkdownParser } from "../parser/MarkdownParser";
-import { HtmlGenerator } from "../HtmlGenerator";
 import { render } from "../renderer/walker";
 import { htmlRenderer } from "./html";
 import type {
@@ -17,13 +16,6 @@ import type {
   TextNode,
   WorkflowNode,
 } from "../parser/types";
-
-function renderBoth(source: string): { v1: string; v2: string } {
-  const ast = new MarkdownParser().parse(source).nodes;
-  const v1 = new HtmlGenerator().generate(ast);
-  const v2 = render(ast, htmlRenderer);
-  return { v1, v2 };
-}
 
 describe("htmlRenderer", () => {
   describe("per-handler output", () => {
@@ -267,7 +259,7 @@ describe("htmlRenderer", () => {
     });
   });
 
-  describe("parity with HtmlGenerator", () => {
+  describe("end-to-end fixture corpus", () => {
     const corpus: Array<{ name: string; source: string }> = [
       { name: "single header", source: "# Welcome" },
       {
@@ -364,9 +356,9 @@ describe("htmlRenderer", () => {
       },
     ];
 
-    test.each(corpus)("$name matches v1 byte-for-byte", ({ source }) => {
-      const { v1, v2 } = renderBoth(source);
-      expect(v2).toBe(v1);
+    test.each(corpus)("$name renders to a stable snapshot", ({ source }) => {
+      const ast = new MarkdownParser().parse(source).nodes;
+      expect(render(ast, htmlRenderer)).toMatchSnapshot();
     });
   });
 });

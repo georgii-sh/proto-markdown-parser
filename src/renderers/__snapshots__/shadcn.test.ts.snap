@@ -1,0 +1,332 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`shadcnRenderer end-to-end fixture corpus all form field types renders to a stable snapshot 1`] = `
+"import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0} className="space-y-2">
+        <Label htmlFor="input-0">Email</Label>
+        <Input id="input-0" type="text" />
+      </div>
+      <div key={1} className="space-y-2">
+        <Label htmlFor="input-1">Password</Label>
+        <Input id="input-1" type="password" />
+      </div>
+      <div key={2} className="space-y-2">
+        <Label htmlFor="textarea-2">Description</Label>
+        <Textarea id="textarea-2" />
+      </div>
+      <div key={3} className="space-y-2">
+        <Label htmlFor="select-3">Country</Label>
+        <Select>
+          <SelectTrigger id="select-3">
+            <SelectValue placeholder="Select an option" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem key={0} value="usa">USA</SelectItem>
+            <SelectItem key={1} value="canada">Canada</SelectItem>
+            <SelectItem key={2} value="mexico">Mexico</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div key={4} className="flex items-center space-x-2">
+        <Checkbox id="checkbox-4" />
+        <Label htmlFor="checkbox-4" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          Remember me
+        </Label>
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus buttons (single, with and without navigation) renders to a stable snapshot 1`] = `
+"import { Button } from "@/components/ui/button";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <Button key={0} variant="default">Submit</Button>
+      <Button key={1} variant="outline">Cancel</Button>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus div with className renders to a stable snapshot 1`] = `
+"
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0} className="custom-class">
+        <p key={0}>Inside</p>
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus grid with cards renders to a stable snapshot 1`] = `
+"import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0} className="grid cols-2 gap-4">
+        <Card key={0}>
+          <CardHeader>
+            <CardTitle>A --]</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Card key={0}>
+              <CardHeader>
+                <CardTitle>B --]</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p key={0}>]</p>
+              </CardContent>
+            </Card>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus header with bold-italic combo renders to a stable snapshot 1`] = `
+"
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <h3 key={0} className="text-2xl font-bold">Bold <strong key={1}><em key={0}>nested</em></strong> italic</h3>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus header with emphasis renders to a stable snapshot 1`] = `
+"
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <h2 key={0} className="text-3xl font-bold">Hello <strong key={1}>world</strong> and <em key={3}>galaxy</em></h2>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus multi-button row renders to a stable snapshot 1`] = `
+"import { Button } from "@/components/ui/button";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0} className="flex gap-2">
+        <Button key={0} variant="default">OK</Button>
+        <Button key={1} variant="outline">Cancel</Button>
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus multi-screen workflow with navigation renders to a stable snapshot 1`] = `
+"import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0}>
+        {(() => {
+      const [currentScreen, setCurrentScreen] = useState('welcome');
+
+        if (currentScreen === 'welcome') {
+          return (
+            <div className="space-y-2">
+        <h1 key={0} className="text-4xl font-bold">Welcome</h1>
+        <Button key={1} variant="default" onClick={() => setCurrentScreen('login')}>Start</Button>
+            </div>
+          );
+        }
+        else if (currentScreen === 'login') {
+          return (
+            <div className="space-y-2">
+        <h1 key={0} className="text-4xl font-bold">Login</h1>
+        <div key={1} className="space-y-2">
+          <Label htmlFor="input-1">Email</Label>
+          <Input id="input-1" type="text" />
+        </div>
+        <Button key={2} variant="default" onClick={() => setCurrentScreen('home')}>Login</Button>
+        <Button key={3} variant="outline" onClick={() => setCurrentScreen('welcome')}>Back</Button>
+            </div>
+          );
+        }
+        else if (currentScreen === 'home') {
+          return (
+            <div className="space-y-2">
+        <h1 key={0} className="text-4xl font-bold">Home</h1>
+        <Button key={1} variant="outline" onClick={() => setCurrentScreen('welcome')}>Logout</Button>
+            </div>
+          );
+        }
+      return <div>Screen not found</div>;
+        })()}
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus nested cards inside a grid renders to a stable snapshot 1`] = `
+"import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0} className="grid cols-2 gap-4">
+        <Card key={0}>
+          <CardHeader>
+            <CardTitle>Outer</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p key={0}>Text inside outer</p>
+          </CardContent>
+        </Card>
+        <Card key={1}>
+          <CardHeader>
+            <CardTitle>Second</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p key={0}>Some text</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus simple table renders to a stable snapshot 1`] = `
+"import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <Table key={0}>
+        <TableHeader>
+          <TableRow>
+            <TableHead key={0}>Name</TableHead>
+            <TableHead key={1}>Age</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow key={0}>
+            <TableCell key={0}>Alice</TableCell>
+            <TableCell key={1}>30</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus single header renders to a stable snapshot 1`] = `
+"
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <h1 key={0} className="text-4xl font-bold">Welcome</h1>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus single-screen workflow renders to a stable snapshot 1`] = `
+"import { useState } from 'react';
+
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <div key={0}>
+        {(() => {
+      const [currentScreen, setCurrentScreen] = useState('home');
+
+        if (currentScreen === 'home') {
+          return (
+            <div className="space-y-2">
+        <h1 key={0} className="text-4xl font-bold">Home</h1>
+            </div>
+          );
+        }
+      return <div>Screen not found</div>;
+        })()}
+      </div>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus titled card with content renders to a stable snapshot 1`] = `
+"import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <Card key={0}>
+        <CardHeader>
+          <CardTitle>Card Title</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p key={0}>Some body text</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+"
+`;
+
+exports[`shadcnRenderer end-to-end fixture corpus untitled card with content renders to a stable snapshot 1`] = `
+"import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+export function GeneratedComponent() {
+  return (
+    <div className="space-y-2">
+      <Card key={0}>
+        <CardContent className="pt-6 space-y-2">
+          <p key={0}>Some body text</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+"
+`;

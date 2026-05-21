@@ -1,4 +1,3 @@
-import type { MarkdownNode } from "../parser/types";
 import type { Renderer } from "../renderer/types";
 
 /**
@@ -374,7 +373,3 @@ ${ctx.indent}</div>`;
     },
   },
 };
-
-// Re-export to make the renderer type discoverable without crossing into
-// /renderer/ (the walker package).
-export type { MarkdownNode };

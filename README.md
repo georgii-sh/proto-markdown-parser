@@ -1,18 +1,14 @@
 # @protomarkdown/parser
 
-Parser and renderer for Proto Markdown syntax - A UI prototyping markdown language for rapid React component generation.
+Parser and renderer plugin API for [Proto Markdown](https://www.protomarkdown.org/documentation) — a UI prototyping markdown language for rapid React/HTML mockups.
 
-[Proto Markdown Syntax Documentation](https://www.protomarkdown.org/documentation)
+## What's new in v2
 
-## Features
+- **Renderer plugin API.** Built-in renderers (`shadcnRenderer`, `htmlRenderer`) implement the same `Renderer` interface as any third-party plugin. Add a new target (Vue JSX, plain Markdown, MDX, your own design system) by writing one renderer module.
+- **Sub-path exports.** Import only what you need: `@protomarkdown/parser` (core + walker), `@protomarkdown/parser/shadcn` (Shadcn renderer), `@protomarkdown/parser/html` (HTML renderer). Tree-shaking is guaranteed by separate bundles.
+- **`MarkdownNode` is a discriminated union.** Handlers narrow on `node.type` and get fully-typed access to variant-specific fields.
 
-- 🎨 Parse Proto Markdown syntax into an Abstract Syntax Tree (AST)
-- ⚛️ Generate React components with Shadcn UI
-- 🔄 Multi-screen workflow navigation system
-- 📋 Form elements (inputs, dropdowns, checkboxes, textareas)
-- 🎯 Cards, grids, and flexible layouts
-- 📊 Tables and data display
-- ✨ Text formatting (bold, italic)
+Migrating from v1? See [CHANGELOG.md](./CHANGELOG.md#200---2026-05-21) for the migration guide.
 
 ## Installation
 
@@ -20,217 +16,221 @@ Parser and renderer for Proto Markdown syntax - A UI prototyping markdown langua
 npm install @protomarkdown/parser
 ```
 
-## Quick Start
+## Quick start — Shadcn JSX
 
 ```ts
-import { MarkdownParser, ShadcnCodeGenerator } from "@protomarkdown/parser";
+import { MarkdownParser, render } from "@protomarkdown/parser";
+import { shadcnRenderer } from "@protomarkdown/parser/shadcn";
 
-const parser = new MarkdownParser();
-const codeGenerator = new ShadcnCodeGenerator();
-
-const markdown = `
+const source = `
 [-- Hello, world!
 Email ___
 Password __*
 [(submit)][cancel]
 --]`;
 
-const ast = parser.parse(markdown);
-const code = codeGenerator.generate(ast.nodes);
+const ast = new MarkdownParser().parse(source).nodes;
+const reactCode = render(ast, shadcnRenderer);
 ```
 
-## Workflows - Multi-Screen Navigation
-
-Create complete multi-screen workflows with clickable navigation between screens:
+## Quick start — HTML preview
 
 ```ts
-const workflowMarkdown = `
+import { MarkdownParser, render } from "@protomarkdown/parser";
+import { htmlRenderer } from "@protomarkdown/parser/html";
+
+const ast = new MarkdownParser().parse(source).nodes;
+const html = render(ast, htmlRenderer);
+```
+
+## Workflows — multi-screen navigation
+
+```ts
+const source = `
 [workflow
   [screen welcome
-    # Welcome to My App
-    Get started with your journey!
+    # Welcome
     [(Get Started) -> login]
-    [Skip to Dashboard -> dashboard]
   ]
-
   [screen login
     # Login
     Email ___
     Password __*
-    Remember me __[]
     [(Login) -> dashboard]
     [Back -> welcome]
   ]
-
   [screen dashboard
     # Dashboard
     Welcome to your dashboard!
-
-    [grid cols-2 gap-4
-      [-- Stats
-        Total Users: 150
-      --]
-      [-- Activity
-        Recent activity here
-      --]
-    ]
-
     [Logout -> welcome]
   ]
 ]`;
 
-const ast = parser.parse(workflowMarkdown);
-const reactCode = codeGenerator.generate(ast.nodes);
+const ast = new MarkdownParser().parse(source).nodes;
+const reactCode = render(ast, shadcnRenderer);
 ```
 
-### Button Navigation Syntax
+The Shadcn renderer emits a `useState` hook, an `if/else` chain over screens, and `onClick={() => setCurrentScreen(targetId)}` handlers on navigation buttons. The HTML renderer renders screens side-by-side with `data-screen-id` attributes; the initial screen receives `proto-screen-active`.
 
-- **Default button with navigation:** `[(Button Text) -> targetScreen]`
-- **Outline button with navigation:** `[Button Text -> targetScreen]`
-- **Multiple navigation buttons:** `[(Next) -> step2][Back -> step1]`
+## Writing a custom renderer
 
-The generated component includes:
-- `useState` hook for screen state management
-- Conditional rendering of screens
-- `onClick` handlers for seamless navigation
+A renderer is a target-specific bundle of handlers plus optional lifecycle hooks. The walker (the engine inside `render`) handles traversal, indent, inline/block dispatch, and `RendererError` on missing handlers — your handlers just produce strings.
 
-## Supported Elements
+```ts
+import { MarkdownParser, render, type Renderer } from "@protomarkdown/parser";
 
-### Form Fields
+interface MyState {
+  imports: Set<string>;
+}
 
-```markdown
-Email ___                              # Text input
-Password __*                           # Password input
-Description |___|                      # Textarea
-Country __> [USA, Canada, Mexico]      # Dropdown with options
-Remember me __[]                       # Checkbox
-Gender __() [Male, Female, Other]      # Radio group
+const myRenderer: Renderer<MyState> = {
+  name: "my-vue-renderer",
+  // Optional: produce per-render state. Walker threads it through ctx.state.
+  begin: () => ({ imports: new Set() }),
+  // Optional: wrap the assembled body.
+  end: (body, state) => `${[...state.imports].join("\n")}\n\n${body}`,
+  // Optional: escape user-supplied strings for the target syntax.
+  escape: (s) => s.replace(/</g, "&lt;"),
+  // Required: one handler per node type. TypeScript enforces exhaustiveness.
+  nodes: {
+    header: (node, ctx) =>
+      `${ctx.indent}<h${node.level}>${ctx.renderChildren(node.children, { inline: true })}</h${node.level}>`,
+    button: (node, ctx) => {
+      ctx.state.imports.add("import Button from './Button.vue'");
+      return `${ctx.indent}<Button>${ctx.escape(node.content)}</Button>`;
+    },
+    // ... one handler per node type
+  },
+  // Optional: inline overrides. Default-inline (escape content) covers any
+  // type you omit, so you usually only override bold/italic/etc. for visual
+  // emphasis.
+  inline: {
+    bold: (node, ctx) => `<b>${ctx.escape(node.content ?? "")}</b>`,
+  },
+};
+
+const ast = new MarkdownParser().parse(source).nodes;
+const output = render(ast, myRenderer);
+```
+
+### What's in `ctx`?
+
+The walker threads a fresh `RenderContext` into every handler call:
+
+| Field | Description |
+| --- | --- |
+| `state` | Your renderer-private state from `begin`. Mutate freely. |
+| `depth` | Current nesting depth (0 at the document root). |
+| `indent` | Precomputed leading whitespace at `depth`. Empty in inline mode. |
+| `inline` | `true` when descending under an inline parent (header, bold, italic, card title). |
+| `key` | Sibling index. Useful for React `key={…}` attributes. |
+| `parent` | The parent node, or `null` for top-level nodes. |
+| `escape` | Bound `renderer.escape`, or identity if you didn't set one. |
+| `renderChildren(children, opts?)` | Render a child list. The walker manages indent (`opts.indent`, default 1), inline/block (`opts.inline`, default inherits), and join (`opts.join`, default `"\n"` for block, `""` for inline). |
+| `renderNode(node)` | Render one node as if it were a child of the current node. |
+
+### Errors
+
+Missing handler? The walker throws `RendererError` with the renderer name, the node type, and the descent path. The required `nodes` map is exhaustive over `NodeType` at compile time — a `RendererError` only fires in practice when a renderer was built against an older `.d.ts` than the running parser.
+
+## Supported syntax
+
+### Form fields
+
+```
+Email ___                          # Text input
+Password __*                       # Password input
+Description |___|                  # Textarea
+Country __> [USA, Canada, Mexico]  # Dropdown with options
+Remember me __[]                   # Checkbox
+Gender __() [Male, Female, Other]  # Radio group
 ```
 
 ### Layouts
 
-```markdown
-[-- Card Title                         # Card
+```
+[-- Card Title                     # Card
 Content here
 --]
 
-[grid cols-2 gap-4                     # Grid layout
+[grid cols-2 gap-4                 # Grid
   [-- Card 1 --]
   [-- Card 2 --]
 ]
 
-[ flex gap-2                           # Custom div with classes
+[ flex gap-2                       # Custom div with classes
   Content
 ]
 ```
 
 ### Buttons
 
-```markdown
-[(Submit)]                             # Default button
-[Cancel]                               # Outline button
-[(Save)][Reset]                        # Multiple buttons
-[(Next) -> step2]                      # Navigation button (workflows)
+```
+[(Submit)]                         # Default button
+[Cancel]                           # Outline button
+[(Save)][Reset]                    # Multiple buttons
+[(Next) -> step2]                  # Navigation button (workflows)
 ```
 
 ### Tables
 
-```markdown
+```
 | Name | Age | City |
 |------|-----|------|
 | John | 30  | NYC  |
-| Jane | 25  | LA   |
 ```
 
-### Text Formatting
+### Text formatting
 
-```markdown
+```
 This is *bold* text
 This is _italic_ text
 This is _*bold and italic*_ text
 ```
 
-## API Reference
+## API reference
 
-### MarkdownParser
-
-```ts
-const parser = new MarkdownParser(options?: ParserOptions);
-const result = parser.parse(markdown: string);
-```
-
-**Options:**
-- `strict?: boolean` - Enable strict parsing mode
-- `preserveWhitespace?: boolean` - Preserve leading/trailing whitespace
-
-**Returns:** `ParseResult` containing `nodes` (AST) and optional `errors`
-
-### ShadcnCodeGenerator
+### `MarkdownParser`
 
 ```ts
-const generator = new ShadcnCodeGenerator();
-const code = generator.generate(nodes: MarkdownNode[]);
+const result = new MarkdownParser().parse(source);
+// result.nodes: MarkdownNode[]
+// result.errors?: string[]
 ```
 
-**Returns:** Complete React component code as a string with necessary Shadcn UI imports
+### `render(nodes, renderer, options?)`
 
-### HtmlGenerator
+Run a renderer over an AST.
 
 ```ts
-const generator = new HtmlGenerator();
-const html = generator.generate(nodes: MarkdownNode[]);
+function render<TState>(
+  nodes: readonly MarkdownNode[],
+  renderer: Renderer<TState>,
+  options?: RenderOptions,
+): string;
+
+interface RenderOptions {
+  indentUnit?: string;     // default "  "
+  initialDepth?: number;   // default 0
+}
 ```
 
-**Returns:** HTML string for VS Code extension preview rendering
+### `Renderer<TState>`
 
-## Examples
+See [Writing a custom renderer](#writing-a-custom-renderer).
 
-### Login Form
+### Built-in renderers
 
-```markdown
-[-- Login
-  # Welcome Back
-  Email ___
-  Password __*
-  Remember me __[]
-  [(Login)][Forgot Password]
---]
-```
-
-### Multi-Step Form Workflow
-
-```markdown
-[workflow
-  [screen step1
-    # Step 1: Personal Info
-    First Name ___ Last Name ___
-    Email ___
-    [(Next) -> step2]
-  ]
-  [screen step2
-    # Step 2: Address
-    Street ___
-    City ___ State ___
-    [(Back) -> step1][(Next) -> step3]
-  ]
-  [screen step3
-    # Step 3: Review
-    Please review your information
-    [(Submit) -> confirmation][(Back) -> step2]
-  ]
-  [screen confirmation
-    # Success!
-    Your form has been submitted.
-    [Start Over -> step1]
-  ]
-]
+```ts
+import { shadcnRenderer } from "@protomarkdown/parser/shadcn";
+import { htmlRenderer } from "@protomarkdown/parser/html";
 ```
 
 ## Testing
 
 ```bash
-npm test          # Run all tests
-npm run build     # Build the library
+npm test          # Run all tests (parser, walker, both renderers)
+npm run build     # Build all three bundles
 ```
 
 ## License

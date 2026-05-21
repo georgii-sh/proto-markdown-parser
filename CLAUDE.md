@@ -2,106 +2,138 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+See [CONTEXT.md](./CONTEXT.md) for the vocabulary glossary — **node**, **renderer**, **walker**, **handler**, **target state**, etc. Use those terms verbatim in code, comments, and PRs.
+
 ## Project Overview
 
-This is a TypeScript library that parses Proto Markdown syntax (a UI prototyping markdown language from protomarkdown.org) and generates code output. The library provides three main classes:
+A TypeScript library that parses Proto Markdown (a UI prototyping markdown language from protomarkdown.org) into a discriminated-union AST and renders it via the **renderer plugin API**. The library ships:
 
-- **MarkdownParser**: Parses Proto Markdown syntax into an Abstract Syntax Tree (AST)
-- **ShadcnCodeGenerator**: Converts the AST into React component code using Shadcn UI components
-- **HtmlGenerator**: Converts the AST into HTML for preview rendering (used by VS Code extension)
+- **`MarkdownParser`** — turns a Proto Markdown source string into `MarkdownNode[]`.
+- **`render(nodes, renderer, options?)`** — the walker engine. Target-agnostic; dispatches per-node handlers from a `Renderer<TState>` plugin.
+- **`shadcnRenderer`** (sub-path `@protomarkdown/parser/shadcn`) — emits React component code using Shadcn UI components.
+- **`htmlRenderer`** (sub-path `@protomarkdown/parser/html`) — emits HTML for preview rendering (used by the VS Code extension).
+
+Third-party renderers (Vue, MDX, plain Markdown, design-system variants) implement the same `Renderer` interface as the built-ins.
 
 ## Build and Test Commands
 
 ```bash
-# Build the library (generates CJS and ESM bundles via Rollup)
+# Build all three bundles (core, shadcn, html) via Rollup
 npm run build
 
-# Run all tests (includes the perf suite)
+# Run all tests (parser, walker, both renderers, perf)
 npm test
 
 # Run a single test file
 npm test -- src/parser/parser.test.ts
+npm test -- src/renderer/walker.test.ts
+npm test -- src/renderers/shadcn.test.ts
 
 # Run tests matching a name pattern
 npm test -- -t "workflow"
 
 # Run only the parser perf benchmarks
 npm test -- src/parser/parser.perf.test.ts
+
+# Update snapshot fixtures (after intentional output changes)
+npm test -- src/renderers/ -u
 ```
 
-Tests use Jest with `ts-jest` in ESM mode (`jest.config.js`). Test files live alongside source in `src/parser/` — `parser.test.ts` is the functional suite and `parser.perf.test.ts` is a separate performance benchmark suite. Both are excluded from the Rollup build via `tsconfig.json`.
+Tests use Jest with `ts-jest` in ESM mode (`jest.config.js`). Test files live alongside source. Snapshot files for the renderer fixture corpus live in `src/renderers/__snapshots__/`. All test files and snapshot dirs are excluded from the Rollup build via `tsconfig.json`.
 
 ## Architecture
 
-### Parser Architecture (`src/parser/MarkdownParser.ts`)
+### Parser (`src/parser/MarkdownParser.ts`)
 
-The parser uses a line-based parsing approach with recursive descent for nested structures:
+Line-based parser with recursive descent for nested structures:
 
-1. **Top-level parsing** (`parse` method): Processes markdown line by line, identifying workflows, tables, cards, grids, divs, and inline elements
+1. **Top-level `parse`**: processes Proto Markdown line by line, identifying workflows, tables, cards, grids, divs, and inline elements.
 2. **Recursive parsers**:
-   - `parseWorkflow` handles workflow syntax (`[workflow` to `]`) and orchestrates screen parsing
-   - `parseScreen` handles screen syntax (`[screen id` to `]`) within workflows
-   - `parseCard` handles card syntax (`[--` to `--]`) with depth tracking for nested cards
-   - `parseContainer` handles both grid (`[grid ...`) and div (`[`) syntax with depth tracking
-   - `parseLine` handles inline elements (headers, inputs, buttons with navigation, text, etc.)
-   - `parseInlineEmphasis` handles text formatting (bold `*text*`, italic `_text_`, bold-italic `_*text*_`)
+   - `parseWorkflow` — `[workflow … ]`, orchestrates screen parsing.
+   - `parseScreen` — `[screen id … ]` inside workflows.
+   - `parseCard` — `[-- … --]` with depth tracking for nested cards.
+   - `parseContainer` — `[grid …]` and `[<classes> …]` with depth tracking.
+   - `parseLine` — inline elements (headers, inputs, buttons with navigation, text, etc.).
+   - `parseInlineEmphasis` — `*bold*`, `_italic_`, `_*bold-italic*_`.
+3. **Multi-element detection** — multiple form fields or buttons on one line are wrapped in a `container` node.
+4. **Navigation detection** — buttons with `-> screenId` get a `navigateTo` field; only meaningful inside a workflow.
 
-3. **Multi-element detection**: The parser detects multiple form fields or buttons on a single line and wraps them in a container node
+### AST (`src/parser/types.ts`)
 
-4. **Navigation detection**: Buttons can include navigation targets using `-> screenId` syntax, enabling screen-to-screen transitions in workflows
+`MarkdownNode` is a **discriminated union** keyed by `type`. One variant per node type (`HeaderNode`, `InputNode`, …, `WorkflowNode`, `ScreenNode`). Each variant has only the fields that variant actually has. The exhaustive list of types lives in `NodeType`.
 
-### Node Types (`src/parser/types.ts`)
+Variant categories:
+- Workflow nodes: `workflow` (contains screens, tracks `initialScreen`), `screen` (contains UI elements, has unique `id`).
+- Container nodes: `card`, `container`, `grid`, `div`.
+- Form elements: `input`, `textarea`, `dropdown`, `checkbox`, `radiogroup`.
+- Content elements: `header`, `text`, `button` (optional `navigateTo`), `image`, `table`.
+- Inline formatting: `bold`, `italic` (can nest via `children`).
 
-The AST uses a union type system with a single `MarkdownNode` interface containing optional fields for different node types. Key node types:
-- Workflow nodes: `workflow` (contains screens, tracks `initialScreen`), `screen` (contains UI elements, has unique `id`)
-- Container nodes: `card`, `container`, `grid`, `div` (all have `children` arrays)
-- Form elements: `input`, `textarea`, `dropdown`, `checkbox`, `radiogroup`
-- Content elements: `header`, `text`, `button` (can have `navigateTo` for screen transitions), `image`, `table`
-- Inline formatting: `bold`, `italic` (can nest via `children`)
+### Walker (`src/renderer/walker.ts` + `src/renderer/types.ts`)
 
-### Code Generator Architecture (`src/ShadcnCodeGenerator.ts`)
+The walker is the target-agnostic engine inside `render()`. It owns:
 
-The code generator recursively traverses the AST and:
-1. Tracks required Shadcn UI component imports in `requiredImports` Set
-2. Manages indentation levels for proper JSX nesting
-3. Generates a complete React component with imports and proper formatting
-4. Escapes JSX special characters in user content
-5. For workflows: Generates `useState` hook for screen management and conditional rendering logic
+- AST traversal (top-level join with `"\n"`; child join controlled by the handler via `ctx.renderChildren({ join })`).
+- Indent computation (`ctx.indent = indentUnit.repeat(depth)`, empty in inline mode).
+- Inline vs block dispatch — looks up `renderer.inline[type]` first when inline, falls back to `renderer.nodes[type]` otherwise. If no inline handler is set, falls back to a safe default: escape `content`, or recurse into `children` inline.
+- Key sequencing — `ctx.key` is the sibling index.
+- Lifecycle — `renderer.begin(nodes)` once before traversal, `renderer.end(body, state)` once after.
+- Missing-handler errors — `RendererError` with renderer name, node type, and descent path.
 
-The generator handles inline nodes differently from block nodes, using `generateInlineNode` for text content within headers, bold, and italic elements.
+Compile-time exhaustiveness is enforced by the `NodeHandlers<TState> = { [K in NodeType]: NodeHandler<K, TState> }` mapped type; renderers that omit a node type get a TypeScript error.
 
-**Workflow Generation**: When a `workflow` node is encountered, the generator creates:
-- A `useState` hook to manage `currentScreen` state
-- Conditional rendering (if/else chain) for each screen
-- `onClick` handlers on navigation buttons that call `setCurrentScreen(targetId)`
-- An IIFE wrapper to encapsulate the state and logic
+### Built-in renderers (`src/renderers/`)
 
-### HTML Generator Architecture (`src/HtmlGenerator.ts`)
+#### `shadcnRenderer` (`src/renderers/shadcn.ts`)
 
-The HTML generator produces static HTML with CSS classes prefixed with `proto-` for styling. It:
-1. Recursively renders each node type to HTML strings
-2. Handles inline nodes separately via `renderInlineNode` for text formatting
-3. Parses grid config (e.g., `cols-2 gap-4`) into CSS grid styles
-4. Escapes HTML special characters in user content
-5. For workflows: Renders all screens with `data-screen-id` attributes and marks the initial screen as active
+`Renderer<ShadcnState>` where `ShadcnState = { imports: Set<string>; hasWorkflow: boolean }`.
+
+- One handler per node type. Each handler that uses a Shadcn component calls `ctx.state.imports.add("Button")` (etc.).
+- `nodes.workflow` writes the `useState` + `if/else if` chain, sets `state.hasWorkflow = true`, and renders each screen's children via `ctx.renderChildren(screen.children, { indent: 1 })`.
+- `nodes.button` emits `onClick={() => setCurrentScreen('…')}` whenever `node.navigateTo` is set.
+- `nodes.card` renders children with `{ indent: 2 }` — matches v1's `indentLevel += 2` for the Card → CardContent nesting.
+- Inline handlers for `bold` and `italic` emit `<strong>`/`<em>` without the leading indent. Inline `text` falls through to the walker's default (escape only) — no handler needed.
+- `end()` reads `state.imports` to assemble import statements, prepends `import { useState } from 'react';` when `state.hasWorkflow`, and wraps the body in `GeneratedComponent` with a 6-space base indent on every line.
+
+#### `htmlRenderer` (`src/renderers/html.ts`)
+
+`Renderer<void>` — HTML has no per-render side effects.
+
+- One handler per node type; CSS classes prefixed with `proto-` for styling.
+- Handlers **ignore `ctx.indent`** because v1's `HtmlGenerator` embeds literal whitespace inside template literals. The handlers reproduce those template strings verbatim to keep byte-equality with v1.
+- `nodes.workflow` renders screens with `data-screen-id`, marks the initial screen with `proto-screen-active` and an `<Initial>` badge.
+- `parseGridConfig` parses `cols-N gap-N` Tailwind-style tokens into inline CSS grid styles.
+- `escape` adds single-quote escaping (`'` → `&#039;`) on top of the standard HTML escapes.
+
+### Public surface (`src/index.ts`, `src/shadcn.ts`, `src/html.ts`)
+
+The core entry (`src/index.ts`) exports the parser, the walker engine, and the renderer plugin types. Sub-path entries (`src/shadcn.ts`, `src/html.ts`) re-export their respective built-in renderers. Each entry compiles to its own CJS + ESM + `.d.ts` bundle, so a consumer of `@protomarkdown/parser/html` never pulls in Shadcn-specific code.
 
 ## Key Implementation Details
 
 ### Parser Edge Cases
 
-- **Depth tracking**: Cards, grids, and divs track nesting depth to correctly match opening and closing delimiters
-- **Order-dependent parsing**: Card syntax must be checked before div syntax (since cards start with `[`)
-- **Multi-field lines**: The parser checks for multiple fields before single fields to avoid partial matches
+- **Depth tracking** — cards, grids, and divs track nesting depth to correctly match opening and closing delimiters.
+- **Order-dependent parsing** — card syntax must be checked before div syntax (since cards start with `[`).
+- **Multi-field lines** — the parser checks for multiple fields before single fields to avoid partial matches.
 
-### Indentation Strategy
+### Shadcn renderer's two-axis indent
 
-The code generator uses a two-part indentation system:
-- Dynamic indentation via `indentLevel` for nested structures
-- Base 6-space indentation added to all generated code to fit within the component return statement
+Two contributing systems:
+- The walker's per-depth `ctx.indent` (default 2-space unit) handles dynamic JSX nesting.
+- `end()` prepends a 6-space base indent to every line so the body sits cleanly inside `return ( … )`.
 
-### Import Management
+### HTML renderer ignores `ctx.indent`
 
-The generator uses a Set to track which Shadcn UI components are used, then generates only the necessary import statements at the top of the file.
+The v1 `HtmlGenerator` template literals contain hand-tuned whitespace, not computed indents. The v2 renderer reproduces those template strings verbatim — `ctx.indent` is available but unused. This is intentional, not an oversight: it's what guarantees the v2 output is byte-equal to v1.
+
+### Adding a new node type
+
+1. Add a variant to `MarkdownNode` in `src/parser/types.ts` and append the tag to `NodeType`.
+2. Wire the parser to emit it.
+3. Add a handler to `nodes` in `shadcnRenderer` and `htmlRenderer`. TypeScript will refuse to compile until you do.
+4. Add inline override(s) if the node can appear in inline contexts.
+5. Add snapshot coverage to the renderer fixture corpus.
 
 ## Common Proto Markdown Patterns
 
@@ -162,7 +194,11 @@ Content here
 
 ## Package Configuration
 
-- Entry points: `src/index.ts` exports `MarkdownParser`, `ShadcnCodeGenerator`, and `HtmlGenerator`
-- Build output: Dual CJS (`dist/index.js`) and ESM (`dist/index.esm.js`) bundles with TypeScript declarations
-- Module system: ESNext with ES2020 target
-- Bundler: Rollup with TypeScript plugin
+- **Entry points**:
+  - `src/index.ts` — `MarkdownParser`, `render`, `Renderer`, `RenderContext`, `RenderOptions`, `RendererError`, `MarkdownNode`, `NodeType`, plus the handler-typing helpers.
+  - `src/shadcn.ts` — `shadcnRenderer`, `ShadcnState`.
+  - `src/html.ts` — `htmlRenderer`, `HtmlState`.
+- **Build output** — three separate dual (CJS + ESM) bundles with `.d.ts` per entry, plus declaration files for the internal `src/parser/`, `src/renderer/`, and `src/renderers/` directories so consumers can navigate to internal types if they want.
+- **Module system** — ESNext with ES2020 target.
+- **Bundler** — Rollup, one config object per entry (see `rollup.config.js`).
+- **Package exports** — `package.json` `exports` map gates each sub-path with `types` / `import` / `require` conditions.

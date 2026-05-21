@@ -1,5 +1,4 @@
 import { MarkdownParser } from "../parser/MarkdownParser";
-import { ShadcnCodeGenerator } from "../ShadcnCodeGenerator";
 import { render } from "../renderer/walker";
 import { shadcnRenderer } from "./shadcn";
 import type {
@@ -10,19 +9,10 @@ import type {
   HeaderNode,
   ImageNode,
   InputNode,
-  MarkdownNode,
   TableNode,
   TextNode,
   WorkflowNode,
 } from "../parser/types";
-
-/** Run a markdown source through both v1 and v2 generators. */
-function renderBoth(source: string): { v1: string; v2: string } {
-  const ast = new MarkdownParser().parse(source).nodes;
-  const v1 = new ShadcnCodeGenerator().generate(ast);
-  const v2 = render(ast, shadcnRenderer);
-  return { v1, v2 };
-}
 
 describe("shadcnRenderer", () => {
   describe("per-handler output", () => {
@@ -237,7 +227,7 @@ describe("shadcnRenderer", () => {
     });
   });
 
-  describe("parity with ShadcnCodeGenerator", () => {
+  describe("end-to-end fixture corpus", () => {
     const corpus: Array<{ name: string; source: string }> = [
       {
         name: "single header",
@@ -329,9 +319,9 @@ describe("shadcnRenderer", () => {
       },
     ];
 
-    test.each(corpus)("$name matches v1 byte-for-byte", ({ source }) => {
-      const { v1, v2 } = renderBoth(source);
-      expect(v2).toBe(v1);
+    test.each(corpus)("$name renders to a stable snapshot", ({ source }) => {
+      const ast = new MarkdownParser().parse(source).nodes;
+      expect(render(ast, shadcnRenderer)).toMatchSnapshot();
     });
   });
 });

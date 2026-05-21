@@ -139,7 +139,9 @@ export const htmlRenderer: Renderer<HtmlState>;
 
 **Done when:** `htmlRenderer` passes its tests and produces output equivalent to `HtmlGenerator` on all current fixtures.
 
-### Phase 4 — Sub-path exports, delete old, v2 bump, release
+### Phase 4 — Sub-path exports, delete old, v2 bump, release ✅ DONE
+
+**Outcome:** triple-bundle Rollup config (`src/index.ts`, `src/shadcn.ts`, `src/html.ts` → `dist/{index,shadcn,html}.{js,esm.js,d.ts}`). `package.json` `exports` map gates each sub-path. Tree-shake verified: `dist/html.esm.js` has zero shadcn refs and `dist/shadcn.esm.js` has zero html refs. V1 classes (`ShadcnCodeGenerator`, `HtmlGenerator`) deleted; v2 surface = parser + walker engine + plugin types + sub-path renderers. Parity tests converted to Jest snapshots (captured the v1 output the day v1 was deleted) — 30 snapshot fixtures replace the parity corpus and become the regression baseline. Version bumped to `2.0.0`. README rewritten around `render(ast, …Renderer)` with a "Writing a custom renderer" section. CHANGELOG includes a step-by-step v1→v2 migration guide. CLAUDE.md rewritten to reflect the walker/renderer split. Final pass: 206/206 tests + 30 snapshots green, `tsc --noEmit` clean.
 
 **Goal:** wire up the public surface. After this phase the v1 classes are gone and the library ships as v2.
 
