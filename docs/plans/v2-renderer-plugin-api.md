@@ -109,7 +109,9 @@ export const htmlRenderer: Renderer<HtmlState>;
 
 **Done when:** walker tests green, walker module isolated, old generators untouched.
 
-### Phase 2 — Port Shadcn to the new API
+### Phase 2 — Port Shadcn to the new API ✅ DONE
+
+**Outcome:** `src/renderers/shadcn.ts` + `src/renderers/shadcn.test.ts` (30 tests: per-handler units, workflow, inline emphasis, wrapping, and a 14-snippet parity corpus against `ShadcnCodeGenerator`). Full suite 172/172, `tsc --noEmit` clean. v1 class still present; both renderers coexist until Phase 4.
 
 **Goal:** rewrite `ShadcnCodeGenerator` as `shadcnRenderer: Renderer<ShadcnState>` using only the public surface from Phase 1.
 
