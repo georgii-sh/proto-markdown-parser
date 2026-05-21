@@ -76,7 +76,7 @@ export const htmlRenderer: Renderer<HtmlState>;
 
 ## Phases (tracer bullets — each phase leaves the repo green)
 
-### Phase 0 — Discriminated union for `MarkdownNode`
+### Phase 0 — Discriminated union for `MarkdownNode` ✅ DONE (commit `cd723f3`)
 
 **Goal:** flip `MarkdownNode` from bag-of-17-optionals to a proper tagged union. Internal refactor, no public API change yet.
 
@@ -88,9 +88,11 @@ export const htmlRenderer: Renderer<HtmlState>;
 
 **Done when:** `npm test` green, `tsc` clean, no `node.foo!` or `node.foo || ""` defensive checks remain except where the field is genuinely optional in its variant.
 
-### Phase 1 — Walker + `Renderer` interface + tracer-bullet renderer
+### Phase 1 — Walker + `Renderer` interface + tracer-bullet renderer ✅ DONE
 
 **Goal:** prove the architecture end-to-end on a tiny slice. One node type, fully through the new pipeline, with tests.
+
+**Outcome:** `src/renderer/types.ts` + `src/renderer/walker.ts` (~100 lines) + `src/renderer/walker.test.ts` (19 tests covering dispatch, indent, inline dispatch, missing-handler errors, lifecycle, state threading, ctx.parent, ctx.escape, ctx.key). Walker is internal to the package — not yet re-exported from `src/index.ts` (deferred to Phase 4).
 
 - Create `src/renderer/` directory.
 - Write `src/renderer/types.ts` — `Renderer`, `RenderContext`, `RenderOptions`, `NodeHandler`, `RendererError`.
