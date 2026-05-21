@@ -125,7 +125,9 @@ export const htmlRenderer: Renderer<HtmlState>;
 
 **Done when:** `shadcnRenderer` passes its tests and produces output equivalent to `ShadcnCodeGenerator` on all current parser-test fixtures.
 
-### Phase 3 — Port HTML to the new API
+### Phase 3 — Port HTML to the new API ✅ DONE
+
+**Outcome:** `src/renderers/html.ts` + `src/renderers/html.test.ts` (34 tests: per-handler units, workflow incl. standalone-screen and initialScreen fallback, inline emphasis, and a 16-snippet parity corpus against `HtmlGenerator`). `HtmlState = void` — HTML has no cross-render side effects. Renderer ignores `ctx.indent` because v1 embeds literal whitespace inside template literals; reproducing those template strings verbatim is what guarantees byte-equality. Full suite 206/206, `tsc --noEmit` clean.
 
 **Goal:** same as Phase 2 for HTML. Mirror the structure exactly so the two renderers serve as a reference for third-party plugin authors.
 
