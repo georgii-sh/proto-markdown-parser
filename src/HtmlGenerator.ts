@@ -1,4 +1,24 @@
-import { MarkdownNode } from "./parser/types";
+import {
+  MarkdownNode,
+  HeaderNode,
+  InputNode,
+  TextareaNode,
+  DropdownNode,
+  CheckboxNode,
+  RadioGroupNode,
+  ButtonNode,
+  TextNode,
+  ContainerNode,
+  CardNode,
+  TableNode,
+  GridNode,
+  DivNode,
+  BoldNode,
+  ItalicNode,
+  ImageNode,
+  WorkflowNode,
+  ScreenNode,
+} from "./parser/types";
 
 /**
  * Generates HTML from a Proto Markdown AST
@@ -55,20 +75,13 @@ export class HtmlGenerator {
     }
   }
 
-  private renderHeader(node: MarkdownNode): string {
-    const level = node.level || 1;
-    let content: string;
-
-    if (node.children && node.children.length > 0) {
-      content = this.renderInlineNodes(node.children);
-    } else {
-      content = this.escapeHtml(node.content || "");
-    }
-
+  private renderHeader(node: HeaderNode): string {
+    const level = node.level;
+    const content = this.renderInlineNodes(node.children);
     return `<h${level} class="proto-header">${content}</h${level}>`;
   }
 
-  private renderText(node: MarkdownNode): string {
+  private renderText(node: TextNode): string {
     if (node.children && node.children.length > 0) {
       const content = this.renderInlineNodes(node.children);
       return `<p class="proto-text">${content}</p>`;
@@ -76,14 +89,14 @@ export class HtmlGenerator {
     return `<p class="proto-text">${this.escapeHtml(node.content || "")}</p>`;
   }
 
-  private renderBold(node: MarkdownNode): string {
+  private renderBold(node: BoldNode): string {
     if (node.children && node.children.length > 0) {
       return `<strong>${this.renderInlineNodes(node.children)}</strong>`;
     }
     return `<strong>${this.escapeHtml(node.content || "")}</strong>`;
   }
 
-  private renderItalic(node: MarkdownNode): string {
+  private renderItalic(node: ItalicNode): string {
     if (node.children && node.children.length > 0) {
       return `<em>${this.renderInlineNodes(node.children)}</em>`;
     }
@@ -112,46 +125,47 @@ export class HtmlGenerator {
         }
         return this.escapeHtml(node.content || "");
       default:
-        return this.escapeHtml(node.content || "");
+        // unreachable: parseInlineEmphasis only produces bold/italic/text
+        return "";
     }
   }
 
-  private renderInput(node: MarkdownNode): string {
+  private renderInput(node: InputNode): string {
     const placeholder = node.inputType === "password" ? "••••••••" : "";
     return `
       <div class="proto-field">
-        <label class="proto-label">${this.escapeHtml(node.label || "")}</label>
+        <label class="proto-label">${this.escapeHtml(node.label)}</label>
         <input type="${
-          node.inputType || "text"
+          node.inputType
         }" class="proto-input" placeholder="${placeholder}" disabled />
       </div>`;
   }
 
-  private renderTextarea(node: MarkdownNode): string {
+  private renderTextarea(node: TextareaNode): string {
     return `
       <div class="proto-field">
-        <label class="proto-label">${this.escapeHtml(node.label || "")}</label>
+        <label class="proto-label">${this.escapeHtml(node.label)}</label>
         <textarea class="proto-textarea" disabled></textarea>
       </div>`;
   }
 
-  private renderCheckbox(node: MarkdownNode): string {
+  private renderCheckbox(node: CheckboxNode): string {
     return `
       <div class="proto-checkbox">
         <input type="checkbox" class="proto-checkbox-input" disabled />
         <label class="proto-checkbox-label">${this.escapeHtml(
-          node.label || ""
+          node.label
         )}</label>
       </div>`;
   }
 
-  private renderRadioGroup(node: MarkdownNode): string {
-    const options = (node.options || [])
+  private renderRadioGroup(node: RadioGroupNode): string {
+    const options = node.options
       .map(
         (opt) => `
         <div class="proto-radio-option">
           <input type="radio" class="proto-radio-input" name="${this.escapeHtml(
-            node.label || ""
+            node.label
           )}" disabled />
           <label class="proto-radio-label">${this.escapeHtml(opt)}</label>
         </div>`
@@ -160,24 +174,24 @@ export class HtmlGenerator {
 
     return `
       <div class="proto-radiogroup">
-        <label class="proto-label">${this.escapeHtml(node.label || "")}</label>
+        <label class="proto-label">${this.escapeHtml(node.label)}</label>
         <div class="proto-radio-options">${options}</div>
       </div>`;
   }
 
-  private renderDropdown(node: MarkdownNode): string {
+  private renderDropdown(node: DropdownNode): string {
     const options = (node.options || ["Select an option"])
       .map((opt) => `<option>${this.escapeHtml(opt)}</option>`)
       .join("");
 
     return `
       <div class="proto-field">
-        <label class="proto-label">${this.escapeHtml(node.label || "")}</label>
+        <label class="proto-label">${this.escapeHtml(node.label)}</label>
         <select class="proto-select" disabled>${options}</select>
       </div>`;
   }
 
-  private renderButton(node: MarkdownNode): string {
+  private renderButton(node: ButtonNode): string {
     const btnClass =
       node.variant === "default"
         ? "proto-button-default"
@@ -190,24 +204,17 @@ export class HtmlGenerator {
       : "";
 
     return `<button class="proto-button ${btnClass}" disabled>${this.escapeHtml(
-      node.content || ""
+      node.content
     )}${navIndicator}</button>`;
   }
 
-  private renderCard(node: MarkdownNode): string {
-    let cardTitle = "";
+  private renderCard(node: CardNode): string {
+    const cardTitle =
+      node.titleChildren && node.titleChildren.length > 0
+        ? `<div class="proto-card-header">${this.renderInlineNodes(node.titleChildren)}</div>`
+        : "";
 
-    if (node.titleChildren && node.titleChildren.length > 0) {
-      cardTitle = `<div class="proto-card-header">${this.renderInlineNodes(
-        node.titleChildren
-      )}</div>`;
-    } else if (node.title) {
-      cardTitle = `<div class="proto-card-header">${this.escapeHtml(
-        node.title
-      )}</div>`;
-    }
-
-    const cardChildren = node.children ? this.generate(node.children) : "";
+    const cardChildren = this.generate(node.children);
 
     return `
       <div class="proto-card">
@@ -216,30 +223,30 @@ export class HtmlGenerator {
       </div>`;
   }
 
-  private renderContainer(node: MarkdownNode): string {
-    const children = node.children ? this.generate(node.children) : "";
+  private renderContainer(node: ContainerNode): string {
+    const children = this.generate(node.children);
     return `<div class="proto-container">${children}</div>`;
   }
 
-  private renderGrid(node: MarkdownNode): string {
-    const children = node.children ? this.generate(node.children) : "";
-    const gridConfig = this.parseGridConfig(node.gridConfig || "");
+  private renderGrid(node: GridNode): string {
+    const children = this.generate(node.children);
+    const gridConfig = this.parseGridConfig(node.gridConfig);
     return `<div class="proto-grid" style="${gridConfig}">${children}</div>`;
   }
 
-  private renderDiv(node: MarkdownNode): string {
-    const children = node.children ? this.generate(node.children) : "";
+  private renderDiv(node: DivNode): string {
+    const children = this.generate(node.children);
     return `<div class="proto-div ${this.escapeHtml(
       node.className || ""
     )}">${children}</div>`;
   }
 
-  private renderTable(node: MarkdownNode): string {
-    const headerCells = (node.headers || [])
+  private renderTable(node: TableNode): string {
+    const headerCells = node.headers
       .map((h) => `<th class="proto-table-th">${this.escapeHtml(h)}</th>`)
       .join("");
 
-    const bodyRows = (node.rows || [])
+    const bodyRows = node.rows
       .map(
         (row) =>
           `<tr>${row
@@ -258,20 +265,18 @@ export class HtmlGenerator {
       </table>`;
   }
 
-  private renderImage(node: MarkdownNode): string {
+  private renderImage(node: ImageNode): string {
     return `<img class="proto-image" src="${this.escapeHtml(
-      node.src || ""
-    )}" alt="${this.escapeHtml(node.alt || "")}" />`;
+      node.src
+    )}" alt="${this.escapeHtml(node.alt)}" />`;
   }
 
-  private renderWorkflow(node: MarkdownNode): string {
-    const screens = (node.children || [])
+  private renderWorkflow(node: WorkflowNode): string {
+    const screens = node.children
       .map((screen, idx) => {
         const isInitial = screen.id === node.initialScreen || idx === 0;
-        const screenContent = screen.children
-          ? this.generate(screen.children)
-          : "";
-        const screenId = screen.id || "";
+        const screenContent = this.generate(screen.children);
+        const screenId = screen.id;
 
         return `
           <div class="proto-screen${
@@ -295,9 +300,9 @@ export class HtmlGenerator {
     return `<div class="proto-workflow">${screens}</div>`;
   }
 
-  private renderScreen(node: MarkdownNode): string {
-    const screenChildren = node.children ? this.generate(node.children) : "";
-    const screenId = node.id || "";
+  private renderScreen(node: ScreenNode): string {
+    const screenChildren = this.generate(node.children);
+    const screenId = node.id;
 
     return `
       <div class="proto-screen" data-screen-id="${this.escapeHtml(screenId)}">

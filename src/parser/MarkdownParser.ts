@@ -1,4 +1,10 @@
-import { MarkdownNode, ParserOptions, ParseResult } from "./types";
+import {
+  MarkdownNode,
+  ParserOptions,
+  ParseResult,
+  ScreenNode,
+  TableNode,
+} from "./types";
 
 export class MarkdownParser {
   private options: ParserOptions;
@@ -121,7 +127,7 @@ export class MarkdownParser {
     lines: string[],
     startIndex: number
   ): { node: MarkdownNode; nextIndex: number } {
-    const screens: MarkdownNode[] = [];
+    const screens: ScreenNode[] = [];
     let i = startIndex + 1;
     let depth = 1;
     let initialScreen: string | undefined;
@@ -171,7 +177,7 @@ export class MarkdownParser {
     lines: string[],
     startIndex: number,
     screenId: string
-  ): { node: MarkdownNode; nextIndex: number } {
+  ): { node: ScreenNode; nextIndex: number } {
     const screenChildren: MarkdownNode[] = [];
     let i = startIndex + 1;
     let depth = 1;
@@ -246,7 +252,7 @@ export class MarkdownParser {
     lines: string[],
     startIndex: number,
     closingDelimiter?: string
-  ): { node: MarkdownNode; nextIndex: number } {
+  ): { node: TableNode; nextIndex: number } {
     const line = this.options.preserveWhitespace ? lines[startIndex] : lines[startIndex].trim();
     const headers = line
       .split("|")
@@ -436,15 +442,13 @@ export class MarkdownParser {
       i++;
     }
 
-    const node: MarkdownNode = {
-      type,
-      children: containerChildren,
-    };
-
+    let node: MarkdownNode;
     if (type === 'grid') {
-      node.gridConfig = config;
-    } else if (type === 'div' && config) {
-      node.className = config;
+      node = { type: 'grid', gridConfig: config, children: containerChildren };
+    } else {
+      node = config
+        ? { type: 'div', className: config, children: containerChildren }
+        : { type: 'div', children: containerChildren };
     }
 
     return {
