@@ -13,15 +13,23 @@ This is a TypeScript library that parses Proto Markdown syntax (a UI prototyping
 ## Build and Test Commands
 
 ```bash
-# Build the library (generates CJS and ESM bundles)
+# Build the library (generates CJS and ESM bundles via Rollup)
 npm run build
 
-# Run tests
+# Run all tests (includes the perf suite)
 npm test
 
-# Build before publishing (runs automatically)
-npm run prepublishOnly
+# Run a single test file
+npm test -- src/parser/parser.test.ts
+
+# Run tests matching a name pattern
+npm test -- -t "workflow"
+
+# Run only the parser perf benchmarks
+npm test -- src/parser/parser.perf.test.ts
 ```
+
+Tests use Jest with `ts-jest` in ESM mode (`jest.config.js`). Test files live alongside source in `src/parser/` — `parser.test.ts` is the functional suite and `parser.perf.test.ts` is a separate performance benchmark suite. Both are excluded from the Rollup build via `tsconfig.json`.
 
 ## Architecture
 
